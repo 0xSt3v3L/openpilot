@@ -4,10 +4,12 @@ A personal fork of openpilot for one car: a 2024 Taiwan Corolla Altis Hybrid (`T
 openpilot longitudinal) with a comma four and a chestnut eGPU. The branch is pushed to the git remote `fork`; `origin` is
 commaai.
 
-Upstream base: openpilot v0.11.3 nightly-chestnut-dev `4daed07cf5`, master `89e7e0a4c4` (AGNOS 20.3, Light-speed 2 big
-model), merged on 2026-11-06 (before: master `2ab952d5eb` on 2026-10-26, `75b2ccca60` on 2026-10-16). Upstream comes in
+Upstream base: openpilot v0.11.3 nightly-chestnut-dev `14f405d9ba`, master `77536e6e1f` (AGNOS 20.6, Light-speed 2 big
+model), merged on 2026-11-15 (before: master `89e7e0a4c4` on 2026-11-06, `2ab952d5eb` on 2026-10-26, `75b2ccca60` on
+2026-10-16). Upstream comes in
 as release builds (vendored submodules, prebuilt binaries), which share no history with master: the fork started from
-the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb) and `c31101b6bb` (89e7e0a4c4) are
+the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4) and
+`0f55acae28` (77536e6e1f) are
 release build trees each committed with the previous upstream build as its parent (`git commit-tree
 origin/nightly-chestnut-dev^{tree} -p <last upstream commit>`), then merged. Do the same for the next upstream: conflicts in the fork's own binaries (libparams_c.so,
 pandad, loggerd, cereal/gen, panda_h7) keep ours and get rebuilt; every other prebuilt binary comes from the build.
@@ -72,6 +74,7 @@ Most features are ported from sunnypilot (MIT; keep a local checkout to compare 
 | Low-speed turn desire (`LaneTurnDesire`, default off) | `selfdrive/controls/lib/lane_turn.py`, `desire_helper.py`, `modeld.py` |
 | Low-speed lateral deadband (no wheel turn before a stop) and swing shaping (7-22 km/h) | `selfdrive/controls/lib/low_speed_lat.py`, `modeld.py` |
 | Toyota resume race fix (RES while braking latched a cruise fault) | safety `opendbc_repo/opendbc/safety/modes/toyota.h`; firmware `panda/board/obj` |
+| Gas override boost (upstream removed it in #39306; kept for the aggressive personality) | `selfdrive/controls/lib/accel_boost.py`, `longitudinal_planner.py` |
 | MADS process replay | `selfdrive/test/process_replay/mads_replay.py` |
 | Dev tools | `openpilot/tools/op_mads/` (deploy, tests, drive report, problem map, frames, route pull) |
 
@@ -101,10 +104,16 @@ ON THE DEVICE when their inputs change:
   @150 and up. Ordinals cannot skip, so `forkReserved106`-`forkReserved149` keep @106-@149 free for upstream: when a
   merge brings a new upstream event, replace the next placeholder with it; never move the fork's events. Logs from
   AGNOS 19 builds have the fork events at @105-@124: `tools/op_mads/legacy_events.py` reads them (drive_report does).
-- Panda: `HEALTH_FLAG_CONTROLS_ALLOWED_LATERAL` is bit 10 (upstream took 9). Upstream keeps the safety state in a
-  64-byte MPU region (`stm32h7x5_flash.ld`, `llmpu.h`): `controls_allowed_lateral` is in it, so any write to it outside
-  the safety hooks needs `mpu_safety_open()`/`mpu_safety_close()` (a stray write latches a permanent `FAULT_MPU` and
-  forces SILENT). Firmware: `scons panda/board/obj/panda_h7.bin.signed` in the test copy, copy the panda_h7 files.
+- Panda: `HEALTH_FLAG_CONTROLS_ALLOWED_LATERAL` is bit 10 (upstream took 9). Since 77536e6e1f upstream runs every safety
+  hook on two copies (`safety_a`/`safety_b`, `SafetyState` + `SafetySetup`, reached through the `safety` and
+  `safety_setup` macros) and compares them (`FAULT_SAFETY_REDUNDANCY`, bit 30, logged only for now); both copies sit in
+  the 2 KB MPU region. Every piece of safety state, the fork's included, must be a `SafetyState` field: a global is
+  updated by both copies in turn (a global `toyota_engage_pending` made copy A miss the resume grant), and
+  `test_globals.py` fails on any writable global. Set state from outside the hooks for both copies (`safety_heartbeat`,
+  `safety_heartbeat_mads`, `SAFETY_SET` in libsafety) and inside `mpu_safety_open()`/`mpu_safety_close()` on the panda
+  (a stray write latches a permanent `FAULT_MPU` and forces SILENT). `SafetyTestBase.tearDown` asserts the copies are
+  equal after every test. Firmware: `scons panda/board/obj/panda_h7.bin.signed` (and `bootstub.panda_h7.bin`) in the
+  test copy, copy the 5 panda_h7 files.
 
 ## Testing
 
@@ -114,8 +123,11 @@ The worktree has no Python env. Tests run in a macOS test copy with a uv venv an
 openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if needed, fork tests + core suites, ruff
 ```
 
-- The copy lives next to the worktree (`../op-mads-test-ls2`, override with `OP_MADS_TEST`; `../op-mads-test-up1019` and
-  `../op-mads-test-v0113` are the copies of the previous upstreams, `../op-mads-test` the v0.11.2 one). Since 89e7e0a4c4
+- The copy lives next to the worktree (`../op-mads-test-ncd77536`, override with `OP_MADS_TEST`; `../op-mads-test-ls2`,
+  `../op-mads-test-up1019` and `../op-mads-test-v0113` are the copies of the previous upstreams, `../op-mads-test` the
+  v0.11.2 one). A copy made from the previous one needs the files upstream deleted moved out (the sync only copies).
+  `test_loggerd` fails in every copy (the committed `loggerd` is the device's ELF); it only runs while a merge is
+  uncommitted. Since 89e7e0a4c4
   msgq and raylib are nanobind modules: a new copy needs `uv sync --frozen --extra testing --extra tools` and
   `scons msgq_repo/msgq openpilot/common/libparams_c.dylib` (PyAV for frames.py is no longer in the lock file) and is synced by `../op-mads-sync.sh` (`OP_MADS_SYNC`), which copies the files changed since
   `577b3b55f`. A file reverted back to that base stays stale in the copy; check with `cmp`. The sync skips a Linux (ELF)
@@ -127,6 +139,8 @@ openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if need
   or run models.
 - Single modules: `cd <copy> && .venv/bin/python -m unittest openpilot.selfdrive...test_x`. Lint: `.venv/bin/ruff check`.
 - New param keys need the copy's `libparams_c.dylib` rebuilt (`run_tests.sh` does it).
+- MISRA: run cppcheck from `../opendbc-env` the way `opendbc/safety/tests/misra/test_misra.sh` and
+  `panda/tests/misra/test_misra.sh` do (the scripts need a git checkout); they fail only on misra / error / style lines.
 - opendbc safety tests use a separate env:
   `cd opendbc_repo && PYTHONPATH=$PWD <opendbc env>/.venv/bin/python -m unittest <module>`, where the env is an opendbc
   checkout at the fork's opendbc base with its own venv (kept next to the worktree as `../opendbc-env`).
@@ -144,7 +158,8 @@ openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if need
 
 ## The comma four
 
-- Reached through an ssh host alias (the tools default to `comma_4`; `pull_route.sh` takes `OP_MADS_DEVICE`). AGNOS 20.3,
+- Reached through an ssh host alias (the tools default to `comma_4`; `pull_route.sh` takes `OP_MADS_DEVICE`). AGNOS 20.3
+  with the ls2 build (20.6 once this branch is deployed),
   repo at `/data/openpilot` (its `origin` is the fork), `DisableUpdates=1`.
 - Deploy only while offroad (`/data/params/d/IsOnroad` not `1`). Rebooting needs the user's explicit approval.
 - `deploy.py --dry-run` runs the preflight; `deploy.py --reboot --trailer "Co-Authored-By: ..."` deploys and reboots.
@@ -214,6 +229,9 @@ openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if need
   keep MADS disabled: a later cruise engage would give an engaged openpilot that never steers (reverted in `a7a3c9a39`).
   A mismatch behaves like stock `controlsMismatch`, and the panda still gates steering.
 - The standstill alerts only fire while openpilot does not control longitudinal and after the car first moved.
+- mici onroad UI: `status_fade.color()` indexes its dict by every `UIStatus`, so each call needs a `LAT_ONLY` color
+  (cyan, as the lane lines); "openpilot steers" is `status_fade.steering_weight()` (ENGAGED + LAT_ONLY), not
+  `weight(ENGAGED)`. `test_lat_only_status.py` checks both.
 - Blind spot: op sets `ToyotaFlags.HAS_BSM` only if `0x3F6` shows up during fingerprinting; it was set on every op route
   so far. The owner's manual says BSM works above about 16 km/h, but logs show onsets down to 10-11 km/h (also after
   minutes below 16 km/h) and none below 8 km/h: treat about 9-10 km/h as the real floor for blind spot features.
