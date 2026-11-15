@@ -158,8 +158,8 @@ openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if need
 
 ## The comma four
 
-- Reached through an ssh host alias (the tools default to `comma_4`; `pull_route.sh` takes `OP_MADS_DEVICE`). AGNOS 20.3
-  with the ls2 build (20.6 once this branch is deployed),
+- Reached through an ssh host alias (the tools default to `comma_4`; `pull_route.sh` takes `OP_MADS_DEVICE`). AGNOS 20.6
+  since 2026-11-15 (this branch; rollback: op-chestnut-mads-ls2 flashes 20.3 back),
   repo at `/data/openpilot` (its `origin` is the fork), `DisableUpdates=1`.
 - Deploy only while offroad (`/data/params/d/IsOnroad` not `1`). Rebooting needs the user's explicit approval.
 - `deploy.py --dry-run` runs the preflight; `deploy.py --reboot --trailer "Co-Authored-By: ..."` deploys and reboots.
@@ -169,6 +169,10 @@ openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if need
   new code. Check out the branch without building, reboot (AGNOS flashes, about 10 min, two reboots), stop the manager,
   build the binaries, commit them, reboot again. Going back to an older branch flashes its AGNOS back the same way.
   The AGNOS updater waits for a tap on the device screen before it writes the new slot.
+- `/data/params/d` is a symlink to `/data/params/d_tmp`: back it up with `cp -a /data/params/d_tmp <dest>` (a `cp -a` of
+  `d` copies only the link; `/data/params_backup_20261106_ls2` and `_20261115_ncd77536` are such links, the real copy
+  is `/data/params_backup_20261115_ncd77536_copy`).
+- debugfs is root only on AGNOS 20.6: wrap the whole command in `sudo sh -c`, including `ls`.
 - AGNOS 20 has no `git-lfs`; the repo uses upstream's `lfs.py` client (big model pkls come from the Hugging Face
   bucket). After the 19.9 -> 20.3 switch, `./lfs.py install` on the device replaced the git-lfs hooks and filter; run it
   again if git reports that git-lfs is missing.
