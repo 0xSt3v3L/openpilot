@@ -86,7 +86,7 @@ class TestLaneTurnPlumbing(OpenpilotTestCase):
     assert "model_data_sp_send.modelDataSP.laneTurnDirection = DH.lane_turn_direction" in modeld
 
   def test_toggle_in_mici_settings(self):
-    with open(os.path.join(BASEDIR, "openpilot/selfdrive/ui/mici/layouts/settings/toggles.py")) as f:
+    with open(os.path.join(BASEDIR, "openpilot/selfdrive/ui/mici/layouts/settings/driving.py")) as f:
       toggles = f.read()
     assert '"LaneTurnDesire"' in toggles
     assert '("LaneTurnDesire", lane_turn_toggle)' in toggles

@@ -4,12 +4,12 @@
 set -euo pipefail
 
 WT=$(cd "$(dirname "$0")/../../.." && pwd)
-# the copy for this upstream (nanobind msgq natives rebuilt after the 89e7e0a4c4 merge); op-mads-test-up1019 is the previous one
-export OP_MADS_TEST=${OP_MADS_TEST:-$WT/../op-mads-test-ls2}
+# the copy for this upstream (AGNOS 20.6 build 77536e6e1f); op-mads-test-ls2 is the previous one
+export OP_MADS_TEST=${OP_MADS_TEST:-$WT/../op-mads-test-ncd77536}
 export OP_MADS_WT=$WT  # the sync script copies from this worktree into OP_MADS_TEST
 TEST=$OP_MADS_TEST
 SYNC=${OP_MADS_SYNC:-$WT/../op-mads-sync.sh}
-BASE=c31101b6bb  # openpilot v0.11.3 nightly-chestnut-dev build of 89e7e0a4c4, the upstream the fork last merged
+BASE=0f55acae28  # openpilot v0.11.3 nightly-chestnut-dev build of 77536e6e1f, the upstream the fork last merged
 CORE=(
   openpilot.selfdrive.selfdrived.tests.test_state_machine
   openpilot.selfdrive.selfdrived.tests.test_alerts

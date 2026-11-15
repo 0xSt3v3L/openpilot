@@ -385,15 +385,29 @@ class TestToyotaMadsSafety(TestToyotaSafetyTorque):
     self.safety.set_heartbeat_engaged_mads(False)
     for _ in range(3):
       self.assertTrue(self.safety.get_controls_allowed_lateral())
-      self.safety.mads_heartbeat_engaged_check()
+      self.safety.safety_heartbeat_check()
     self.assertFalse(self.safety.get_controls_allowed_lateral())
 
   def test_heartbeat_engaged_keeps_lateral(self):
     self._grant_lateral_via_main()
     self.safety.set_heartbeat_engaged_mads(True)
     for _ in range(10):
-      self.safety.mads_heartbeat_engaged_check()
+      self.safety.safety_heartbeat_check()
     self.assertTrue(self.safety.get_controls_allowed_lateral())
+
+  def test_heartbeat_mads_survives_safety_mode_change(self):
+    # like upstream's heartbeat_engaged: openpilot reports it, a safety mode change does not
+    self._grant_lateral_via_main()
+    self.safety.set_heartbeat_engaged_mads(True)
+    self._reset_safety_hooks()
+    self.assertTrue(self.safety.get_heartbeat_engaged_mads())
+    self.assertFalse(self.safety.get_controls_allowed_lateral())
+
+  def test_heartbeat_mads_is_in_both_copies(self):
+    for engaged in (True, False):
+      self.safety.set_heartbeat_engaged_mads(engaged)
+      for copy in ("safety_a", "safety_b"):
+        self.assertEqual(getattr(self.safety, copy).state.heartbeat_engaged_mads, engaged)
 
   def test_main_on_at_safety_init_grants_then_heartbeat_revokes(self):
     # first PCM_CRUISE_2 after a safety mode init already reports MAIN_ON
@@ -403,7 +417,7 @@ class TestToyotaMadsSafety(TestToyotaSafetyTorque):
     self.assertTrue(self.safety.get_controls_allowed_lateral())
     self.safety.set_heartbeat_engaged_mads(False)
     for _ in range(3):
-      self.safety.mads_heartbeat_engaged_check()
+      self.safety.safety_heartbeat_check()
     self.assertFalse(self.safety.get_controls_allowed_lateral())
 
   def _set_prev_torque(self, t):
