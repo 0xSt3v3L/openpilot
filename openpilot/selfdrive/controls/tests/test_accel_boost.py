@@ -79,6 +79,12 @@ class TestPlannerUsesAccelBoost(unittest.TestCase):
     self.assertIn("output_a_target_e2e = self.accel_boost.update(sm, output_a_target_e2e, output_a_target_mpc, self.a_cruise)", src)
     self.assertIn("longitudinalPlan.accelBoost = float(self.accel_boost.total_boost)", src)
 
+  def test_no_second_aggressive_boost(self):
+    # upstream's #39430 adds a fixed aggressive boost; AccelBoost already starts at ACCEL_BOOST_INITIAL for aggressive
+    with open(os.path.join(BASEDIR, "openpilot/selfdrive/controls/lib/longitudinal_planner.py")) as f:
+      src = f.read()
+    self.assertNotIn("AGGRESSIVE_ACCEL_BOOST", src)
+
   def test_accel_boost_is_a_live_field(self):
     self.assertIn("accelBoost", log.LongitudinalPlan.schema.fields)
 
