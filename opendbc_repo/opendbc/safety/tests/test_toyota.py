@@ -195,6 +195,13 @@ class TestToyotaSafetyBase(common.CarSafetyTest, common.LongitudinalAccelSafetyT
     self._rx(self._user_brake_msg(0))
     self.assertFalse(self.safety.get_controls_allowed())
 
+  def test_pending_edge_needs_cruise_still_engaged(self):
+    # only a PCM_CRUISE message changes cruise_engaged_prev and it also drops the edge, so this guards the invariant
+    self._engage_while_braking()
+    self.safety.set_cruise_engaged_prev(False)
+    self._rx(self._user_brake_msg(0))
+    self.assertFalse(self.safety.get_controls_allowed())
+
   def test_brake_after_engagement_does_not_regrant(self):
     self._rx(self._vehicle_moving_msg(self.STANDSTILL_THRESHOLD + 1))
     self._rx(self._user_brake_msg(0))
