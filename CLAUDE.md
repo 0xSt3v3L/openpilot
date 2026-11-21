@@ -4,12 +4,14 @@ A personal fork of openpilot for one car: a 2024 Taiwan Corolla Altis Hybrid (`T
 openpilot longitudinal) with a comma four and a chestnut eGPU. The branch is pushed to the git remote `fork`; `origin` is
 commaai.
 
-Upstream base: openpilot v0.11.3 nightly-chestnut-dev `14f405d9ba`, master `77536e6e1f` (AGNOS 20.6, Light-speed 2 big
-model), merged on 2026-11-15 (before: master `89e7e0a4c4` on 2026-11-06, `2ab952d5eb` on 2026-10-26, `75b2ccca60` on
-2026-10-16). Upstream comes in
+Upstream base: openpilot v0.11.4 nightly-chestnut-dev `5b9d5d4e10`, master `ff300ecf78` (AGNOS 20.6, Light-speed 2 big
+model), merged on 2026-11-21 (before: master `77536e6e1f` on 2026-11-15, `89e7e0a4c4` on 2026-11-06, `2ab952d5eb` on
+2026-10-26, `75b2ccca60` on 2026-10-16). On top of the build the fork reverts #37824 (model lead trajectory in the long
+MPC, reverted on master right after the build in `4bd73298e9`) and drops #39430's fixed aggressive boost (AccelBoost
+already starts aggressive at 0.1). Upstream comes in
 as release builds (vendored submodules, prebuilt binaries), which share no history with master: the fork started from
-the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4) and
-`0f55acae28` (77536e6e1f) are
+the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4),
+`0f55acae28` (77536e6e1f) and `208dce93a0` (ff300ecf78) are
 release build trees each committed with the previous upstream build as its parent (`git commit-tree
 origin/nightly-chestnut-dev^{tree} -p <last upstream commit>`), then merged. Do the same for the next upstream: conflicts in the fork's own binaries (libparams_c.so,
 pandad, loggerd, cereal/gen, panda_h7) keep ours and get rebuilt; every other prebuilt binary comes from the build.
@@ -113,7 +115,9 @@ ON THE DEVICE when their inputs change:
   `safety_heartbeat_mads`, `SAFETY_SET` in libsafety) and inside `mpu_safety_open()`/`mpu_safety_close()` on the panda
   (a stray write latches a permanent `FAULT_MPU` and forces SILENT). `SafetyTestBase.tearDown` asserts the copies are
   equal after every test. Firmware: `scons panda/board/obj/panda_h7.bin.signed` (and `bootstub.panda_h7.bin`) in the
-  test copy, copy the 5 panda_h7 files.
+  test copy, copy the 5 panda_h7 files. Since ff300ecf78 upstream's safety test suite requires 100% line and branch
+  coverage (`opendbc/safety/tests/test.sh`, gcovr): fork safety code needs a test for every branch. Panda MISRA reports
+  misra-c2012-8.7 on `ignition_can_reset` (only libsafety calls it); the unmodified upstream tree reports it too.
 
 ## Testing
 
@@ -123,7 +127,8 @@ The worktree has no Python env. Tests run in a macOS test copy with a uv venv an
 openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if needed, fork tests + core suites, ruff
 ```
 
-- The copy lives next to the worktree (`../op-mads-test-ncd77536`, override with `OP_MADS_TEST`; `../op-mads-test-ls2`,
+- The copy lives next to the worktree (`../op-mads-test-ncdff300`, override with `OP_MADS_TEST`;
+  `../op-mads-test-ncd77536`, `../op-mads-test-ls2`,
   `../op-mads-test-up1019` and `../op-mads-test-v0113` are the copies of the previous upstreams, `../op-mads-test` the
   v0.11.2 one). A copy made from the previous one needs the files upstream deleted moved out (the sync only copies).
   `test_loggerd` fails in every copy (the committed `loggerd` is the device's ELF); it only runs while a merge is
