@@ -13,7 +13,7 @@
 
 // called once per rx message, after the safety mode rx hook updated acc_main_on and controls_allowed
 static void mads_rx_update(void) {
-  const bool mads_enabled = ((safety_setup.alternative_experience & ALT_EXP_ENABLE_MADS) != 0) &&
+  const bool mads_enabled = ((((uint32_t)safety_setup.alternative_experience) & ALT_EXP_ENABLE_MADS) != 0U) &&
                             (safety_setup.current_safety_mode == SAFETY_TOYOTA);
   const bool acc_main_rising = safety.acc_main_on && !safety.mads_acc_main_prev;
   const bool controls_allowed_rising = safety.controls_allowed && !safety.mads_controls_allowed_prev;
