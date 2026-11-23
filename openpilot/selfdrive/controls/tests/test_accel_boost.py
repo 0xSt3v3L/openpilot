@@ -23,9 +23,12 @@ def make_sm(enabled=True, personality=AGGRESSIVE, gas=False, v_ego=FAST):
 
 
 class TestAccelBoost(unittest.TestCase):
-  def test_aggressive_boosts_the_model_target(self):
+  def test_aggressive_starts_without_boost(self):
+    # Fairy Tale road test: no initial boost, so red-light braking onset (0 to -0.5 m/s^2) is the model's own
+    self.assertEqual(ACCEL_BOOST_INITIAL, 0.0)
     boost = AccelBoost()
-    self.assertAlmostEqual(boost.update(make_sm(), 0.5, 2.0, 2.0), 0.5 + ACCEL_BOOST_INITIAL)
+    self.assertAlmostEqual(boost.update(make_sm(), 0.5, 2.0, 2.0), 0.5)
+    self.assertAlmostEqual(boost.update(make_sm(), -0.3, 2.0, 2.0), -0.3)
 
   def test_standard_has_no_initial_boost(self):
     boost = AccelBoost()

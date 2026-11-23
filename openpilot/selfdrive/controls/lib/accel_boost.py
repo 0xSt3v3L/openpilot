@@ -3,7 +3,7 @@ from openpilot.cereal import log
 from openpilot.common.constants import CV
 from openpilot.common.realtime import DT_MDL
 
-ACCEL_BOOST_INITIAL = 0.1
+ACCEL_BOOST_INITIAL = 0.0  # 0.1 for aggressive before the Fairy Tale road test; revert to restore
 ACCEL_BOOST_MAX = 0.2
 ACCEL_BOOST_RATE = 0.025
 ACCEL_BOOST_PER_OVERRIDE = 0.05
