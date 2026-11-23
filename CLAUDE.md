@@ -8,7 +8,8 @@ Upstream base: openpilot v0.11.4 nightly-chestnut-dev `5b9d5d4e10`, master `ff30
 model), merged on 2026-11-21 (before: master `77536e6e1f` on 2026-11-15, `89e7e0a4c4` on 2026-11-06, `2ab952d5eb` on
 2026-10-26, `75b2ccca60` on 2026-10-16). On top of the build the fork reverts #37824 (model lead trajectory in the long
 MPC, reverted on master right after the build in `4bd73298e9`) and drops #39430's fixed aggressive boost (AccelBoost
-already starts aggressive at 0.1). Upstream comes in
+already starts aggressive at 0.1). Branch `op-chestnut-mads-ncdff300-ft` adds only master's Fairy Tale big model
+(#39415, `af90646a4a`) for a road test. Upstream comes in
 as release builds (vendored submodules, prebuilt binaries), which share no history with master: the fork started from
 the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4),
 `0f55acae28` (77536e6e1f) and `208dce93a0` (ff300ecf78) are
@@ -182,8 +183,12 @@ openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if need
   bucket). After the 19.9 -> 20.3 switch, `./lfs.py install` on the device replaced the git-lfs hooks and filter; run it
   again if git reports that git-lfs is missing.
 - op flashes the chestnut firmware only while offroad; after switching branches the chestnut may need a manual flash.
-- The device's big driving model is commaai Light-speed 2 (`b92fc48286`, checkpoint `f22e06e5/56320/ea2f516f`, LFS oid
-  `b4dead3e`), upstream's default since the 89e7e0a4c4 merge; offline against MD v3 (`op-mads-logs/lightspeed2_ab.txt`) it
+- On this branch the big driving model is commaai Fairy Tale (`af90646a4a`, checkpoint
+  `f22e06e5/56320/3f1a78e6`, LFS oid `e62c2ae9`, same tinygrad `ec91b74`); offline (`op-mads-logs/fairytale_ab.txt`,
+  UPDATE section) it accelerates the most of 11 models (free road +0.07, launches +1.41), brakes later and harder for
+  leads and red lights, holds the most outward curve line, turns right 0.81x MD v3, and has little stop steering bias.
+  On `op-chestnut-mads-ncdff300` the big driving model is commaai Light-speed 2 (`b92fc48286`, checkpoint
+  `f22e06e5/56320/ea2f516f`, LFS oid `b4dead3e`), upstream's default since the 89e7e0a4c4 merge; offline against MD v3 (`op-mads-logs/lightspeed2_ab.txt`) it
   cuts curves least of all models tested, accelerates about like MD v3, steers ~9% busier on straights, and asks for more
   small left requests while stopping (the low-speed deadband catches those under 0.03 m/s^2). MD v3 for this tinygrad
   is `ad4c9cdf18`. A big model pkl only loads with the tinygrad it was compiled with (tinygrad `ec91b74` since the merge,
