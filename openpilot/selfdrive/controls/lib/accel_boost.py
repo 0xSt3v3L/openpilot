@@ -3,7 +3,11 @@ from openpilot.cereal import log
 from openpilot.common.constants import CV
 from openpilot.common.realtime import DT_MDL
 
-ACCEL_BOOST_INITIAL = 0.0  # 0.1 for aggressive before the Fairy Tale road test; revert to restore
+ACCEL_BOOST_INITIAL = {  # m/s^2, upstream #39440's personality table
+  log.LongitudinalPersonality.relaxed: 0.0,
+  log.LongitudinalPersonality.standard: 0.05,
+  log.LongitudinalPersonality.aggressive: 0.15,
+}
 ACCEL_BOOST_MAX = 0.2
 ACCEL_BOOST_RATE = 0.025
 ACCEL_BOOST_PER_OVERRIDE = 0.05
@@ -20,7 +24,7 @@ class AccelBoost:
     enabled = sm['selfdriveState'].enabled
     gas_pressed = sm['carState'].gasPressed
     v_ego = sm['carState'].vEgo
-    initial_boost = ACCEL_BOOST_INITIAL if sm['selfdriveState'].personality == log.LongitudinalPersonality.aggressive else 0.0
+    initial_boost = ACCEL_BOOST_INITIAL[sm['selfdriveState'].personality.raw]
     self.total_boost = max(self.total_boost, initial_boost) if enabled else initial_boost
 
     speed_scale = np.interp(v_ego, [ACCEL_BOOST_MIN_SPEED, 2 * ACCEL_BOOST_MIN_SPEED], [0.0, 1.0])

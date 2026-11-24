@@ -8,8 +8,10 @@ Upstream base: openpilot v0.11.4 nightly-chestnut-dev `5b9d5d4e10`, master `ff30
 model), merged on 2026-11-21 (before: master `77536e6e1f` on 2026-11-15, `89e7e0a4c4` on 2026-11-06, `2ab952d5eb` on
 2026-10-26, `75b2ccca60` on 2026-10-16). On top of the build the fork reverts #37824 (model lead trajectory in the long
 MPC, reverted on master right after the build in `4bd73298e9`) and drops #39430's fixed aggressive boost (AccelBoost
-already starts aggressive at 0.1). Branch `op-chestnut-mads-ncdff300-ft` adds only master's Fairy Tale big model
-(#39415, `af90646a4a`) for a road test. Upstream comes in
+already starts aggressive at 0.1). Branch `op-chestnut-mads-ncdff300-ft` adds master's Fairy Tale big model
+(#39415, `af90646a4a`) and #39440 (`6daa874b34`: Relaxed follows at 1.45 s; its planner boost table is not taken,
+AccelBoost starts from the same table instead: relaxed 0, standard 0.05, aggressive 0.15, gas overrides up to 0.2).
+Upstream comes in
 as release builds (vendored submodules, prebuilt binaries), which share no history with master: the fork started from
 the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4),
 `0f55acae28` (77536e6e1f) and `208dce93a0` (ff300ecf78) are
@@ -77,7 +79,7 @@ Most features are ported from sunnypilot (MIT; keep a local checkout to compare 
 | Low-speed turn desire (`LaneTurnDesire`, default off) | `selfdrive/controls/lib/lane_turn.py`, `desire_helper.py`, `modeld.py` |
 | Low-speed lateral deadband (no wheel turn before a stop) and swing shaping (7-22 km/h) | `selfdrive/controls/lib/low_speed_lat.py`, `modeld.py` |
 | Toyota resume race fix (RES while braking latched a cruise fault) | safety `opendbc_repo/opendbc/safety/modes/toyota.h`; firmware `panda/board/obj` |
-| Gas override boost (upstream removed it in #39306; kept for the aggressive personality) | `selfdrive/controls/lib/accel_boost.py`, `longitudinal_planner.py` |
+| Gas override boost (upstream removed it in #39306; kept, starting from #39440's personality table) | `selfdrive/controls/lib/accel_boost.py`, `longitudinal_planner.py` |
 | MADS process replay | `selfdrive/test/process_replay/mads_replay.py` |
 | Dev tools | `openpilot/tools/op_mads/` (deploy, tests, drive report, problem map, frames, route pull) |
 
