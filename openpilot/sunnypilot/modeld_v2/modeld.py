@@ -36,6 +36,7 @@ from openpilot.system import sentry
 from openpilot.system.camerad.cameras.nv12_info import get_nv12_info
 from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper
 from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, smooth_value
+from openpilot.selfdrive.controls.lib.low_speed_lat import low_speed_lat_accel, LowSpeedLatShaper
 from openpilot.selfdrive.modeld.modeld import ChestnutState
 
 from openpilot.selfdrive.modeld.compile_modeld import (
@@ -107,6 +108,7 @@ class ModelState(ModelStateBase):
     self.LAT_SMOOTH_SECONDS = float(overrides.get('lat', ".0"))
     self.LONG_SMOOTH_SECONDS = float(overrides.get('long', ".0"))
     self.MIN_LAT_CONTROL_SPEED = 0.3
+    self.lat_shaper = LowSpeedLatShaper(DT_MDL)
     self.PLANPLUS_CONTROL: float = 1.0
     self.chestnut = chestnut
 
@@ -301,7 +303,7 @@ class ModelState(ModelStateBase):
       desired_curvature = get_curvature_from_output(model_output, curvature_plan, v_ego, lat_action_t, self.mlsim)
     else:
       desired_accel = model_output['action'][0, 1]
-      desired_curvature = model_output['action'][0, 0] / (max(1.0, v_ego))**2
+      desired_curvature = low_speed_lat_accel(self.lat_shaper.update(model_output['action'][0, 0], v_ego), v_ego) / (max(1.0, v_ego))**2
 
     stop = v_ego < 0.3 and desired_accel < 0.1
     desired_accel = smooth_value(desired_accel, prev_action.desiredAcceleration, self.LONG_SMOOTH_SECONDS)
