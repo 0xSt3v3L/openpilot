@@ -121,7 +121,8 @@ class LongIndicator(Widget):
       self._alpha_filter.x = 0.0
       return
 
-    disengaged = status_fade.weight(UIStatus.DISENGAGED)
+    # MADS lateral-only steers without controlling speed, so the dial shows it like disengaged
+    disengaged = status_fade.weight(UIStatus.DISENGAGED) + status_fade.weight(UIStatus.LAT_ONLY)
     op_long = ui_state.has_longitudinal_control
     alpha = self._alpha_filter.update(float(self._should_draw))
     # grey while disengaged, white for stock ACC and green for openpilot long while engaged
