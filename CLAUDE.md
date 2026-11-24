@@ -11,7 +11,11 @@ MPC, reverted on master right after the build in `4bd73298e9`) and drops #39430'
 already starts aggressive at 0.1). Branch `op-chestnut-mads-ncdff300-ft` adds master's Fairy Tale big model
 (#39415, `af90646a4a`) and #39440 (`6daa874b34`: Relaxed follows at 1.45 s; its planner boost table is not taken,
 AccelBoost starts from the same table instead: relaxed 0, standard 0.05, aggressive 0.15, gas overrides up to 0.2).
-Upstream comes in
+It follows master to `a5f4c3ac8a` by cherry-picking every commit after ff300ecf78 (no nightly-chestnut-dev build of it
+existed on 2026-11-24): #39432 radard/plannerd cores, qcom priority removal, release notes (version back to 0.11.3, as
+upstream), #39441 orange wheel (kept the MADS cyan), #39442 speed dial (real PNGs, LAT_ONLY dims the dial). Master's
+assets are git-lfs pointers while the release tree holds files: `test_assets_not_lfs.py` catches a pointer. When the
+next nightly-chestnut-dev build lands, its merge should see these as already applied. Upstream comes in
 as release builds (vendored submodules, prebuilt binaries), which share no history with master: the fork started from
 the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4),
 `0f55acae28` (77536e6e1f) and `208dce93a0` (ff300ecf78) are
