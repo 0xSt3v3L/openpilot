@@ -1,7 +1,7 @@
 import numpy as np
 import raylib_nb as rl
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
-from openpilot.selfdrive.ui.mici.onroad.status import status_fade
+from openpilot.selfdrive.ui.mici.onroad.status import StatusFade
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.polygon import Gradient, draw_polygon
@@ -33,18 +33,19 @@ class ConfidenceBall(Widget):
     super().__init__()
     self._confidence_filter = FirstOrderFilter(0.0, 0.5, 1 / gui_app.target_fps)
     self._alpha_filter = FirstOrderFilter(1.0, 0.05, 1 / gui_app.target_fps)
+    self._status = StatusFade(0.1)
     self._hidden = False
 
   def set_hidden(self, hidden: bool):
     self._hidden = hidden
 
   def _update_state(self):
+    # rests at the bottom while disengaged
     predictions = ui_state.sm['modelV2'].meta.disengagePredictions
-    if ui_state.status == UIStatus.LAT_ONLY:
-      # MADS lateral-only: only the steering override risk applies
-      self._confidence_filter.update(1 - max(predictions.steerOverrideProbs or [1]))
-    else:
-      self._confidence_filter.update((1 - max(predictions.brakeDisengageProbs or [1])) * (1 - max(predictions.steerOverrideProbs or [1])))
+    steer = 1 - max(predictions.steerOverrideProbs or [1])
+    # MADS lateral-only: only the steering override risk applies
+    brake = 1.0 if ui_state.status == UIStatus.LAT_ONLY else 1 - max(predictions.brakeDisengageProbs or [1])
+    self._confidence_filter.update(ui_state.status != UIStatus.DISENGAGED and brake * steer)
 
   def _render(self, _):
     alpha = self._alpha_filter.update(0.0 if self._hidden else 1.0)
@@ -55,9 +56,7 @@ class ConfidenceBall(Widget):
     status_dot_radius = 16
     margin = 10
     dot_x = self._rect.x + self._rect.width - margin - status_dot_radius
-    # rests at the bottom while disengaged. the color still comes from the confidence, so it doesn't pass through the low zones
-    height = self._confidence_filter.x * (1 - status_fade.weight(UIStatus.DISENGAGED))
-    dot_height = (1 - height) * (self._rect.height - 2 * (status_dot_radius + margin)) + status_dot_radius + margin
+    dot_height = (1 - self._confidence_filter.x) * (self._rect.height - 2 * (status_dot_radius + margin)) + status_dot_radius + margin
     dot_height = self._rect.y + dot_height
 
     # confidence zones while engaged, top and bottom gradient colors
@@ -70,7 +69,7 @@ class ConfidenceBall(Widget):
     override = (rl.Color(255, 255, 255, 255), rl.Color(82, 82, 82, 255))
     disengaged = (rl.Color(102, 102, 102, 255), rl.Color(26, 26, 26, 255))
     lat_only = (rl.Color(0, 200, 200, 255), rl.Color(0, 200, 200, 255))  # cyan: MADS lateral-only
-    top_dot_color, bottom_dot_color = (status_fade.color({UIStatus.ENGAGED: e, UIStatus.OVERRIDE: o, UIStatus.DISENGAGED: d, UIStatus.LAT_ONLY: lo})
+    top_dot_color, bottom_dot_color = (self._status.color({UIStatus.ENGAGED: e, UIStatus.OVERRIDE: o, UIStatus.DISENGAGED: d, UIStatus.LAT_ONLY: lo})
                                        for e, o, d, lo in zip(engaged, override, disengaged, lat_only, strict=True))
 
     draw_circle_gradient(dot_x, dot_height, status_dot_radius,
