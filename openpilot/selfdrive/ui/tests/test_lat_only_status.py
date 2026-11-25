@@ -62,8 +62,8 @@ class TestLatOnlyStatus(unittest.TestCase):
       engaged_weights = [c for c in _calls(tree, "weight") if c.args and isinstance(c.args[0], ast.Attribute) and c.args[0].attr == "ENGAGED"]
       assert not engaged_weights, f"{name} weighs ENGAGED alone"
 
-  def test_speed_dial_is_off_while_lat_only(self):
-    # MADS lateral-only does not control speed: the speed dial must not turn green or show the set speed / AUTO
+  def test_long_indicator_dims_while_lat_only(self):
+    # MADS lateral-only does not control speed: the distance bars and the stock ACC dial dim as while disengaged
     tree = self._parse(os.path.join(ONROAD, "long_indicator.py"))
     weighed = {c.args[0].attr for c in _calls(tree, "weight") if c.args and isinstance(c.args[0], ast.Attribute)}
     assert {"DISENGAGED", "LAT_ONLY"} <= weighed, f"long_indicator.py weighs {weighed}, not DISENGAGED and LAT_ONLY"
