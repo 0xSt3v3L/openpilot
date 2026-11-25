@@ -16,9 +16,11 @@ existed on 2026-11-24): #39432 radard/plannerd cores, qcom priority removal, rel
 upstream), #39441 orange wheel (kept the MADS cyan), #39442 speed dial (real PNGs, LAT_ONLY dims the dial). Master's
 assets are git-lfs pointers while the release tree holds files: `test_assets_not_lfs.py` catches a pointer. Then the
 nightly-chestnut-dev build of d8c58a323f (`554d533cf3`, synthetic `07858d98d4`) was merged on 2026-11-25: it matched
-the cherry-picks and added #39446 (no wheel color when disengaged, MADS cyan kept). Smoked Cheddar (#39443, small
-model ONNX only, the next master commit) is skipped until a build ships its compiled `driving_tinygrad.pkl`; the speed
-dial revert (#39449, `05c5c54f61`) is not taken. Upstream comes in
+the cherry-picks and added #39446 (no wheel color when disengaged, MADS cyan kept). The build of bd02b7a6bc
+(`a27877ef4f`, synthetic `436e218c21`) was merged the same day: Smoked Cheddar small model (#39443, compiled pkl from
+the build), speed dial revert (#39449: openpilot long shows distance bars, the dial only for stock ACC; LAT_ONLY dims
+both as while disengaged). Then master's #39459-#39462 were cherry-picked up to `e5f93ab0aa`. Since #39460 each widget
+has its own `StatusFade` (`self._status`), no module-level `status_fade`. Upstream comes in
 as release builds (vendored submodules, prebuilt binaries), which share no history with master: the fork started from
 the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4),
 `0f55acae28` (77536e6e1f), `208dce93a0` (ff300ecf78) and `07858d98d4` (d8c58a323f) are
@@ -252,8 +254,8 @@ openpilot/tools/op_mads/run_tests.sh   # sync, rebuild libparams_c.dylib if need
   keep MADS disabled: a later cruise engage would give an engaged openpilot that never steers (reverted in `a7a3c9a39`).
   A mismatch behaves like stock `controlsMismatch`, and the panda still gates steering.
 - The standstill alerts only fire while openpilot does not control longitudinal and after the car first moved.
-- mici onroad UI: `status_fade.color()` indexes its dict by every `UIStatus`, so each call needs a `LAT_ONLY` color
-  (cyan, as the lane lines); "openpilot steers" is `status_fade.steering_weight()` (ENGAGED + LAT_ONLY), not
+- mici onroad UI: `StatusFade.color()` indexes its dict by every `UIStatus`, so each call needs a `LAT_ONLY` color
+  (cyan, as the lane lines); "openpilot steers" is `self._status.steering_weight()` (ENGAGED + LAT_ONLY), not
   `weight(ENGAGED)`. `test_lat_only_status.py` checks both.
 - Blind spot: op sets `ToyotaFlags.HAS_BSM` only if `0x3F6` shows up during fingerprinting; it was set on every op route
   so far. The owner's manual says BSM works above about 16 km/h, but logs show onsets down to 10-11 km/h (also after
