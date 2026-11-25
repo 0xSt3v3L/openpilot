@@ -14,11 +14,14 @@ AccelBoost starts from the same table instead: relaxed 0, standard 0.05, aggress
 It follows master to `a5f4c3ac8a` by cherry-picking every commit after ff300ecf78 (no nightly-chestnut-dev build of it
 existed on 2026-11-24): #39432 radard/plannerd cores, qcom priority removal, release notes (version back to 0.11.3, as
 upstream), #39441 orange wheel (kept the MADS cyan), #39442 speed dial (real PNGs, LAT_ONLY dims the dial). Master's
-assets are git-lfs pointers while the release tree holds files: `test_assets_not_lfs.py` catches a pointer. When the
-next nightly-chestnut-dev build lands, its merge should see these as already applied. Upstream comes in
+assets are git-lfs pointers while the release tree holds files: `test_assets_not_lfs.py` catches a pointer. Then the
+nightly-chestnut-dev build of d8c58a323f (`554d533cf3`, synthetic `07858d98d4`) was merged on 2026-11-25: it matched
+the cherry-picks and added #39446 (no wheel color when disengaged, MADS cyan kept). Smoked Cheddar (#39443, small
+model ONNX only, the next master commit) is skipped until a build ships its compiled `driving_tinygrad.pkl`; the speed
+dial revert (#39449, `05c5c54f61`) is not taken. Upstream comes in
 as release builds (vendored submodules, prebuilt binaries), which share no history with master: the fork started from
 the v0.11.2 build `4800490a7`; `a6f7f353b3` (75b2ccca60), `f5715f8e81` (2ab952d5eb), `c31101b6bb` (89e7e0a4c4),
-`0f55acae28` (77536e6e1f) and `208dce93a0` (ff300ecf78) are
+`0f55acae28` (77536e6e1f), `208dce93a0` (ff300ecf78) and `07858d98d4` (d8c58a323f) are
 release build trees each committed with the previous upstream build as its parent (`git commit-tree
 origin/nightly-chestnut-dev^{tree} -p <last upstream commit>`), then merged. Do the same for the next upstream: conflicts in the fork's own binaries (libparams_c.so,
 pandad, loggerd, cereal/gen, panda_h7) keep ours and get rebuilt; every other prebuilt binary comes from the build.
