@@ -1,13 +1,12 @@
 import math
-import numpy as np
 import raylib_nb as rl
 from dataclasses import dataclass
 from openpilot.common.constants import CV
-from openpilot.selfdrive.ui.mici.onroad import DIMMED_ICON_ALPHA
+from openpilot.selfdrive.ui.mici.onroad import DIMMED_ICON_ALPHA, glow_highlight_texture
 from openpilot.selfdrive.ui.mici.onroad.status import StatusFade, lerp_color
 from openpilot.selfdrive.ui.mici.onroad.torque_bar import TorqueBar
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus, ChestnutState
-from openpilot.system.ui.lib.application import gui_app, FontWeight, ASSETS_DIR
+from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget
@@ -25,29 +24,6 @@ WHEEL_WHITE = rl.Color(255, 255, 255, 255)
 WHEEL_GREEN = rl.Color(0, 255, 64, 255)
 WHEEL_LAT_ONLY = rl.Color(0, 200, 200, 255)  # cyan: MADS lateral-only, as the lane lines
 WHEEL_ORANGE = rl.Color(255, 115, 0, 255)
-
-
-def _texture(rgba: np.ndarray, px: float) -> rl.Texture:
-  texture = rl.load_texture_from_image(rl.Image(None, rgba.shape[1], rgba.shape[0], 1, rl.PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8))
-  rl.update_texture(texture, np.ascontiguousarray(rgba))
-  rl.set_texture_filter(texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-  texture.width, texture.height = round(rgba.shape[1] / px), round(rgba.shape[0] / px)
-  return texture
-
-
-def _wheel_highlight_texture(asset: str, size: int) -> rl.Texture:
-  """Center highlight for the wheel, drawn in white over the tinted wheel. Matches the design's Green Glow and Orange Glow styles:
-  a radial gradient from the base color mixed 50% with white at the center to the base color at the rim."""
-  image = gui_app._load_image_from_path((ASSETS_DIR / asset).as_posix(), size, size)
-  w, h, px = image.width, image.height, image.width / size
-  alpha = np.frombuffer(image.to_bytes(w * h * 4), dtype=np.uint8).reshape(h, w, 4)[..., 3] / 255.0
-  rl.unload_image(image)
-
-  yy, xx = np.mgrid[:h, :w]
-  r = np.hypot(xx + 0.5 - w / 2, yy + 0.5 - h / 2) / (w / 2)
-  highlight_rgba = np.full((h, w, 4), 255, dtype=np.uint8)
-  highlight_rgba[..., 3] = np.clip(alpha * 128 * (1 - r), 0, 255)
-  return _texture(highlight_rgba, px)
 
 
 @dataclass(frozen=True)
@@ -92,7 +68,7 @@ class HudRenderer(Widget):
     self._torque_bar = TorqueBar()
 
     self._txt_wheel: rl.Texture = gui_app.texture('icons_mici/wheel.png', WHEEL_SIZE, WHEEL_SIZE)
-    self._txt_wheel_highlight = _wheel_highlight_texture('icons_mici/wheel.png', WHEEL_SIZE)
+    self._txt_wheel_highlight = glow_highlight_texture('icons_mici/wheel.png', WHEEL_SIZE)
     self._txt_chestnut: rl.Texture = gui_app.texture('icons_mici/chestnut.png', 48, 36)
     self._txt_chestnut_green: rl.Texture = gui_app.texture('icons_mici/chestnut_green.png', 48, 36)
     self._txt_chestnut_orange: rl.Texture = gui_app.texture('icons_mici/chestnut_orange.png', 61, 36)
@@ -188,14 +164,12 @@ class HudRenderer(Widget):
     rl.draw_texture_ex(icon, pos, 0.0, 1.0, rl.Color(255, 255, 255, int(255 * opacity * alpha)))
 
   def _draw_steering_wheel(self, rect: rl.Rectangle) -> None:
-    # Green when engaged (cyan for MADS lateral-only), orange for steerRequired alerts while engaged, and no color when
-    # disengaged.
-    critical = self._wheel_critical_filter.update(self._show_wheel_critical and ui_state.status != UIStatus.DISENGAGED)
+    # green when engaged (cyan for MADS lateral-only), orange for warnings while openpilot steers
+    engaged = self._status.steering_weight()
+    critical = self._wheel_critical_filter.update(self._show_wheel_critical) * engaged
     status_color = self._status.color({UIStatus.ENGAGED: WHEEL_GREEN, UIStatus.OVERRIDE: WHEEL_WHITE, UIStatus.DISENGAGED: WHEEL_WHITE,
                                        UIStatus.LAT_ONLY: WHEEL_LAT_ONLY})
     wheel_color = lerp_color(status_color, WHEEL_ORANGE, critical)
-    engaged = self._status.steering_weight()
-    highlight = engaged + (1 - engaged) * critical
     wheel_txt = self._txt_wheel
 
     # pos
@@ -204,13 +178,13 @@ class HudRenderer(Widget):
     # ease between the live angle and rest on ignition changes; carState keeps its last angle once stopped
     rotation = -ui_state.sm['carState'].steeringAngleDeg * self._wheel_angle_filter.update(ui_state.started and ui_state.received_since_started('carState'))
 
-    alpha = 255 * (1 - (1 - DIMMED_ICON_ALPHA) * self._status.weight(UIStatus.DISENGAGED) * (1 - critical))
+    alpha = 255 * (1 - (1 - DIMMED_ICON_ALPHA) * self._status.weight(UIStatus.DISENGAGED))
     rl.draw_texture_pro(wheel_txt, rl.Rectangle(0, 0, wheel_txt.width, wheel_txt.height),
                         rl.Rectangle(pos_x, pos_y, wheel_txt.width, wheel_txt.height),
                         rl.Vector2(wheel_txt.width / 2, wheel_txt.height / 2), rotation, rl.Color(wheel_color.r, wheel_color.g, wheel_color.b, int(alpha)))
     rl.draw_texture_pro(self._txt_wheel_highlight, rl.Rectangle(0, 0, wheel_txt.width, wheel_txt.height),
                         rl.Rectangle(pos_x, pos_y, wheel_txt.width, wheel_txt.height),
-                        rl.Vector2(wheel_txt.width / 2, wheel_txt.height / 2), rotation, rl.Color(255, 255, 255, int(alpha * highlight)))
+                        rl.Vector2(wheel_txt.width / 2, wheel_txt.height / 2), rotation, rl.Color(255, 255, 255, int(alpha * engaged)))
 
   def _draw_set_speed(self, rect: rl.Rectangle) -> None:
     """Draw the MAX speed indicator box."""
