@@ -23,10 +23,17 @@ def _dict_keys(tree: ast.Module, arg: ast.AST) -> list[ast.AST | None] | None:
   return None
 
 
+def _is_status_fade(node: ast.AST) -> bool:
+  # the module-level status_fade, or a widget's own StatusFade in self._status
+  if isinstance(node, ast.Name):
+    return node.id == "status_fade"
+  return isinstance(node, ast.Attribute) and node.attr == "_status" and isinstance(node.value, ast.Name) and node.value.id == "self"
+
+
 def _calls(tree: ast.Module, method: str):
   for node in ast.walk(tree):
     if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == method and
-        isinstance(node.func.value, ast.Name) and node.func.value.id == "status_fade"):
+        _is_status_fade(node.func.value)):
       yield node
 
 
@@ -44,8 +51,8 @@ class TestLatOnlyStatus(unittest.TestCase):
       for call in _calls(tree, "color"):
         calls += 1
         keys = _dict_keys(tree, call.args[0])
-        assert keys is not None, f"{os.path.basename(path)}:{call.lineno} status_fade.color() argument is not a dict literal or module dict"
-        assert any(_is_lat_only(k) for k in keys), f"{os.path.basename(path)}:{call.lineno} status_fade.color() has no LAT_ONLY color"
+        assert keys is not None, f"{os.path.basename(path)}:{call.lineno} color() argument is not a dict literal or module dict"
+        assert any(_is_lat_only(k) for k in keys), f"{os.path.basename(path)}:{call.lineno} color() has no LAT_ONLY color"
     assert calls >= 3
 
   def test_steering_weight_covers_lat_only(self):
@@ -58,7 +65,7 @@ class TestLatOnlyStatus(unittest.TestCase):
     # the torque bar and the wheel show openpilot steering, also while MADS steers alone
     for name in ("torque_bar.py", "hud_renderer.py"):
       tree = self._parse(os.path.join(ONROAD, name))
-      assert any(_calls(tree, "steering_weight")), f"{name} does not use status_fade.steering_weight()"
+      assert any(_calls(tree, "steering_weight")), f"{name} does not use steering_weight()"
       engaged_weights = [c for c in _calls(tree, "weight") if c.args and isinstance(c.args[0], ast.Attribute) and c.args[0].attr == "ENGAGED"]
       assert not engaged_weights, f"{name} weighs ENGAGED alone"
 
